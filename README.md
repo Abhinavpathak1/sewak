@@ -13,21 +13,72 @@ does not need direct access to the Govlinks service.
 
 ## Sewak assistant chat
 
-The Ask for help page includes a chat window grounded in current Sewak case
-data, the selected civic objective, and category-specific official resources.
-Related cases are ranked by objective, text overlap, location and current case
-status. The assistant API retrieves this context on the server; conversation
-history is held only in the browser and is not persisted.
+The Ask for help page streams answers from NVIDIA's OpenAI-compatible chat
+endpoint. The server provides two controlled tools: semantic search over Sewak
+cases using pgvector, and official-source web search using Tavily. The browser
+never receives provider keys. Without `NVIDIA_API_KEY`, the assistant uses its
+local objective/keyword matcher and labels the answer as a local match.
 
-To enable generated answers, set `OPENAI_API_KEY` and `OPENAI_MODEL` in
-`d-f/.env` (or deployment environment). An OpenAI-compatible provider may be
-configured with `OPENAI_BASE_URL`, which must use HTTPS. Without a provider key,
-the chat remains usable in local matching mode and labels that mode explicitly.
-Queries and relevant case context are sent to the configured provider when
-enabled. The model is instructed to use supplied Sewak context only; this
-implementation does not browse the web. Verify guidance against the linked
-official sources. Do not expose the demo app publicly without authentication,
-privacy review and rate limiting.
+Configure private values in `d-f/.env`:
+
+```dotenv
+NVIDIA_API_KEY=<fresh key from NVIDIA>
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+NVIDIA_MODEL=z-ai/glm-5.3
+NVIDIA_EMBEDDING_MODEL=nvidia/nv-embedqa-e5-v5
+TAVILY_API_KEY=<Tavily key>
+ASSISTANT_INDEX_TOKEN=<long random secret>
+```
+
+Do not commit this file or expose keys through `NEXT_PUBLIC_` variables. A key
+previously pasted into chat should be revoked and replaced before use.
+
+### pgvector RAG setup
+
+The app database needs the PostgreSQL `vector` extension. The stock `postgres:16`
+image currently used by the local Docker container does not include pgvector.
+Use a PostgreSQL 16 image with pgvector (for example,
+`pgvector/pgvector:pg16`) and preserve the existing database volume. Back up
+first and test restoring the backup to the pgvector image before changing the
+active container; never delete a volume as part of this upgrade. Once the
+extension is available, run the reviewed migration:
+
+```powershell
+cd d-f
+npm run db:migrate
+```
+
+The migration creates an `assistant_documents` table with fixed 1024-dimension
+vectors and an HNSW cosine index. `NVIDIA_EMBEDDING_MODEL` must return exactly
+1024 dimensions. Index the current problem cases and category guidance through
+the protected server endpoint after starting the app:
+
+```powershell
+$headers = @{ Authorization = "Bearer $env:ASSISTANT_INDEX_TOKEN" }
+Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/assistant/index -Headers $headers
+```
+
+The index endpoint only accepts the server-side `ASSISTANT_INDEX_TOKEN`;
+re-run it after case descriptions or category guidance change. When pgvector is
+not installed or the index has not been populated, the chat clearly reports
+keyword retrieval instead of vector RAG.
+
+### Official web search and boundaries
+
+Tavily is called only as a server-side model tool. Search candidates and
+returned URLs are checked against the allowlist in
+`d-f/src/lib/assistant-server.ts` (Jaipur Municipal Corporation, Rajasthan
+government portals, CPGRAMS, and NIC). Only HTTPS citations from those hosts
+are returned. Web snippets are untrusted evidence, not instructions. The
+assistant does not fetch arbitrary URLs, execute SQL from model output, or
+submit complaints.
+
+The chat sends the conversation and retrieved Sewak context to NVIDIA when
+configured, and sends search terms to Tavily only when its web tool is used.
+Conversation history is still browser-only and is not persisted. Verify advice
+against cited official pages. This prototype still needs authentication,
+authorization, rate limiting, privacy/retention review, and production
+monitoring before public use.
 
 > **Production status:** This repository is not ready to serve real users.
 > Govlinks has no authentication and accepts client-supplied user IDs; the

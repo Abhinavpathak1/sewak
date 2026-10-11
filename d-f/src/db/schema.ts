@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   index,
   integer,
   pgTable,
@@ -8,6 +9,12 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+
+const vector1024 = customType<{ data: number[]; driverData: string }>({
+  dataType: () => "vector(1024)",
+  toDriver: (value) => `[${value.join(",")}]`,
+  fromDriver: (value) => value.slice(1, -1).split(",").map(Number),
+});
 
 /**
  * A civic post. `kind` = "problem" posts follow the seven-stage case lifecycle;
@@ -96,4 +103,25 @@ export const verifications = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("verifications_issue_resident").on(t.issueId, t.resident)],
+);
+
+export const assistantDocuments = pgTable(
+  "assistant_documents",
+  {
+    id: serial("id").primaryKey(),
+    sourceKey: text("source_key").notNull(),
+    sourceType: text("source_type").notNull(),
+    sourceId: integer("source_id"),
+    category: text("category"),
+    area: text("area"),
+    content: text("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    embedding: vector1024("embedding").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("assistant_documents_source_key").on(t.sourceKey),
+    index("assistant_documents_category").on(t.category),
+    index("assistant_documents_embedding_cosine").using("hnsw", t.embedding.op("vector_cosine_ops")),
+  ],
 );

@@ -1,0 +1,1 @@
+CREATE INDEX "assistant_documents_embedding_cosine" ON "assistant_documents" USING hnsw ("embedding" vector_cosine_ops);

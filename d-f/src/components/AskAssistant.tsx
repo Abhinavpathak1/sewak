@@ -186,7 +186,7 @@ export function AskAssistant({ cases }: { cases: LiteCase[] }) {
             </ol>
             <hr className="divider" />
             <p className="small muted" style={{ margin: 0 }}>
-              Category matching groups similar civic objectives. Chat uses Sewak case context and an optional configured language model. Always verify guidance with official sources.
+              Category matching groups similar civic objectives. Chat can use the NVIDIA agent, Sewak case retrieval, and allowlisted official web search. Always verify guidance with official sources.
             </p>
           </section>
         ) : (
