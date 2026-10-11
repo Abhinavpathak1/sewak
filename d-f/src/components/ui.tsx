@@ -1,8 +1,8 @@
-import { CATEGORIES, STAGES, categoryOf, fmtDate, initials, stageOf, timeAgo } from "@/lib/constants";
+import { CATEGORIES, CIVIC_LOCATIONS, STAGES, categoryOf, civicLocation, fmtDate, initials, stageOf, timeAgo } from "@/lib/constants";
 import type { IssueRow } from "@/lib/queries";
-import { ArrowRight, Check, MessageSquare, Users, type LucideIcon } from "lucide-react";
+import { ArrowRight, Check, MapPin, MessageSquare, Users } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 export function StatusBadge({ kind, stage }: { kind: string; stage: number }) {
   if (kind === "information") return <span className="badge blue plain">Information</span>;
@@ -32,7 +32,7 @@ export function IssueCard({ issue }: { issue: IssueRow }) {
       </div>
       <div style={{ minWidth: 0 }}>
         <h3 className="issue-title">
-          <Link href={`/cases/${issue.id}`} className="stretched">
+          <Link href={`/cases/${issue.id}?location=${issue.locationId}`} className="stretched">
             {issue.title}
           </Link>
         </h3>
@@ -51,6 +51,9 @@ export function IssueCard({ issue }: { issue: IssueRow }) {
             <Users size={15} aria-hidden /> {issue.affectedCount} affected
           </span>
         )}
+        <span title="Ward or neighbourhood">
+          <MapPin size={15} aria-hidden /> {issue.locationText} · {civicLocation(issue.locationId)?.ward ?? CIVIC_LOCATIONS[0].ward}
+        </span>
         <span>
           <MessageSquare size={15} aria-hidden /> {issue.commentCount} {issue.commentCount === 1 ? "comment" : "comments"}
         </span>
@@ -64,7 +67,7 @@ export function IssueCard({ issue }: { issue: IssueRow }) {
 
 export function Metric({
   label, value, note, icon: Icon, tone,
-}: { label: string; value: number | string; note?: string; icon: LucideIcon; tone?: "amber" | "green" | "blue" }) {
+}: { label: string; value: number | string; note?: string; icon: ComponentType<{ size?: number }>; tone?: "amber" | "green" | "blue" }) {
   return (
     <div className="card metric">
       <div>
@@ -143,13 +146,13 @@ export function SourceLabel({ q }: { q: "official" | "demo" | "resident" | "comm
   return <span className={`source ${q}`}>{text}</span>;
 }
 
-export function WardSnapshot({ unresolved, resolved }: { unresolved: number; resolved: number }) {
+export function WardSnapshot({ unresolved, resolved, location }: { unresolved: number; resolved: number; location: (typeof CIVIC_LOCATIONS)[number] }) {
   return (
     <section className="card widget" aria-labelledby="w-snap">
       <h3 id="w-snap">Ward snapshot</h3>
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontWeight: 700, fontFamily: "var(--font-head)", fontSize: 17 }}>Ward 24</div>
-        <div className="small muted">Shastri Nagar, Jaipur</div>
+        <div style={{ fontWeight: 700, fontFamily: "var(--font-head)", fontSize: 17 }}>{location.ward}</div>
+        <div className="small muted">{location.locality}, {location.city}</div>
       </div>
       <div className="kv">
         <div><b>{unresolved}</b><span>Unresolved</span></div>

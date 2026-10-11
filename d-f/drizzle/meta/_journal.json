@@ -22,6 +22,13 @@
       "when": 1791692412323,
       "tag": "0002_icy_ender_wiggin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791733599474,
+      "tag": "0003_add_civic_location",
+      "breakpoints": true
     }
   ]
 }

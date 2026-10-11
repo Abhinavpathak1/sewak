@@ -289,7 +289,14 @@ async function vectorRetrieve(query: string, area: string, intentCategory: strin
   );
   if (!hasIndex.rows[0]?.available || !process.env.NVIDIA_EMBEDDING_MODEL?.trim() || !getNvidiaKey()) return null;
 
-  const queryVector = (await createEmbeddings([query], signal))[0];
+  let queryVector: number[];
+  try {
+    queryVector = (await createEmbeddings([query], signal))[0];
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    console.warn("Sewak vector retrieval is unavailable; falling back to keyword retrieval.", error);
+    return null;
+  }
   const result = await pool.query<{
     id: number;
     title: string;
@@ -387,9 +394,10 @@ async function requestToolCalls(messages: ProviderMessage[], signal: AbortSignal
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: process.env.NVIDIA_MODEL?.trim() || "z-ai/glm-5.3",
+      model: process.env.NVIDIA_MODEL?.trim() || "nvidia/nemotron-3.5-lightning-30b-a3b",
       temperature: 0.2,
       max_tokens: 450,
+      chat_template_kwargs: { enable_thinking: false },
       tools: process.env.TAVILY_API_KEY?.trim() ? AGENT_TOOLS : AGENT_TOOLS.slice(0, 1),
       tool_choice: "auto",
       messages,
@@ -472,11 +480,12 @@ async function* streamNvidiaAnswer(messages: ProviderMessage[], signal: AbortSig
     method: "POST",
     headers: { Authorization: `Bearer ${getNvidiaKey()}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: process.env.NVIDIA_MODEL?.trim() || "z-ai/glm-5.3",
+      model: process.env.NVIDIA_MODEL?.trim() || "nvidia/nemotron-3.5-lightning-30b-a3b",
       temperature: 0.3,
       top_p: 1,
       max_tokens: 1024,
       stream: true,
+      chat_template_kwargs: { enable_thinking: false },
       messages,
     }),
     cache: "no-store",

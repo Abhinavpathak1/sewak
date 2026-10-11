@@ -28,6 +28,7 @@ export const issues = pgTable("issues", {
   category: text("category").notNull(),
   stage: integer("stage").notNull().default(1),
   author: text("author").notNull(),
+  locationId: text("location_id").notNull().default("jaipur-24"),
   locationText: text("location_text").notNull(),
   locationSimulated: boolean("location_simulated").notNull().default(true),
   department: text("department"),

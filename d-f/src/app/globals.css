@@ -201,6 +201,16 @@ button { cursor: pointer; }
 .crumbs { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
 .crumb-context { font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .crumb-context strong { color: var(--text); font-weight: 650; font-size: 14px; }
+.location-picker { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.location-picker > svg { flex: none; color: var(--primary); }
+.location-picker-select { width: auto; min-width: 230px; min-height: 40px; padding: 6px 30px 6px 10px; font-size: 13px; }
+.location-picker.compact { flex-wrap: nowrap; }
+.location-picker.compact .location-picker-select { min-width: 0; max-width: min(34vw, 340px); border-color: transparent; background: transparent; font-weight: 650; }
+.location-default-button { flex: none; }
+.location-default-label { color: var(--text-2); font-size: 12px; font-weight: 600; }
+.location-default-error { color: var(--red-fg); font-size: 12px; }
+.location-save-default { display: flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 13px !important; font-weight: 500 !important; }
+.location-save-default input { width: 16px; height: 16px; accent-color: var(--primary); }
 .crumb-trail { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); margin-top: 2px; white-space: nowrap; overflow: hidden; }
 .crumb-trail a:hover { color: var(--link); text-decoration: underline; }
 .crumb-trail [aria-current] { color: var(--text); font-weight: 600; }

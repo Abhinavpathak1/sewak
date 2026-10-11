@@ -8,8 +8,8 @@ import { Header, MobileNav, Sidebar } from "@/components/shell";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { default: "Civic Network · Ward 24", template: "%s · Civic Network" },
-  description: "Report local problems, support existing cases, and follow progress in Ward 24, Shastri Nagar, Jaipur. Demo data.",
+  title: { default: "Civic Network", template: "%s · Civic Network" },
+  description: "Report local problems, support existing cases, and follow progress in your neighbourhood. Demo data.",
 };
 
 export const viewport: Viewport = {

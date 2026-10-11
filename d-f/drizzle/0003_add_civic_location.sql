@@ -1,0 +1,1 @@
+ALTER TABLE "issues" ADD COLUMN IF NOT EXISTS "location_id" text DEFAULT 'jaipur-24' NOT NULL;

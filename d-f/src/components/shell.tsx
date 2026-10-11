@@ -1,6 +1,6 @@
 "use client";
 
-import { CURRENT_RESIDENT, WARD, caseNumber, initials } from "@/lib/constants";
+import { CIVIC_LOCATIONS, CURRENT_RESIDENT, DEFAULT_LOCATION_ID, WARD, caseNumber, initials } from "@/lib/constants";
 import {
   ClipboardList,
   CircleDot,
@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Home,
   MapPin,
+  Network,
   Search,
   ShieldCheck,
   Plus,
@@ -20,6 +21,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { LocationPicker } from "./LocationPicker";
 
 type Item = { id: string; label: string; href: string; icon: LucideIcon };
 const GROUPS: { title: string; items: Item[] }[] = [
@@ -96,14 +98,7 @@ function NavGroups() {
 }
 
 export function BrandMark({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="5" r="2.2" />
-      <circle cx="5" cy="17.5" r="2.2" />
-      <circle cx="19" cy="17.5" r="2.2" />
-      <path d="M10.6 6.8 6.4 15.6M13.4 6.8l4.2 8.8M7.4 17.5h9.2" />
-    </svg>
-  );
+  return <Network size={size} aria-hidden />;
 }
 
 export function Sidebar() {
@@ -161,10 +156,12 @@ const TITLES: Record<string, string> = {
 
 export function Header() {
   const path = usePathname();
+  const searchParams = useSearchParams();
+  const selectedLocationId = CIVIC_LOCATIONS.find((location) => location.id === searchParams.get("location"))?.id ?? DEFAULT_LOCATION_ID;
   const crumbs: { label: string; href?: string }[] = [{ label: "Home", href: "/" }];
   const m = path.match(/^\/cases\/(\d+)/);
   if (path === "/") crumbs.splice(0, 1, { label: "Home" });
-  else if (m) crumbs.push({ label: "Cases", href: "/cases" }, { label: `Case #${caseNumber(Number(m[1]))}` });
+  else if (m) crumbs.push({ label: "Cases", href: `/cases?location=${selectedLocationId}` }, { label: `Case #${caseNumber(Number(m[1]))}` });
   else if (TITLES[path]) crumbs.push({ label: TITLES[path] });
 
   return (
@@ -178,11 +175,9 @@ export function Header() {
 
       <div className="crumbs">
         <div className="crumb-context">
-          <MapPin size={14} aria-hidden />
-          <strong>{WARD.name}</strong>
-          <span>
-            / {WARD.locality}, {WARD.city}
-          </span>
+          <Suspense fallback={<span>{WARD.name} / {WARD.locality}, {WARD.city}</span>}>
+            <LocationPicker locationId={DEFAULT_LOCATION_ID} compact />
+          </Suspense>
         </div>
         <nav aria-label="Breadcrumb" className="crumb-trail">
           {crumbs.map((c, i) => (
@@ -200,6 +195,7 @@ export function Header() {
 
       <div className="top-actions">
         <form action="/cases" role="search" className="search">
+          <input type="hidden" name="location" value={selectedLocationId} />
           <Search size={16} aria-hidden />
           <label htmlFor="global-search" className="sr-only">
             Search cases
@@ -211,7 +207,7 @@ export function Header() {
         </Link>
         <ThemeToggle />
         {path !== "/report" && (
-          <Link href="/report" className="btn btn-primary top-report">
+          <Link href={`/report?location=${selectedLocationId}`} className="btn btn-primary top-report">
             <Plus size={16} aria-hidden />
             <span className="btn-label">Report</span>
           </Link>

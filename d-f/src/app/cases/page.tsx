@@ -1,5 +1,6 @@
 import { MiniProgress, PageHead, StatusBadge } from "@/components/ui";
-import { CASE_FILTERS, STAGES, categoryOf, matchCaseFilter, timeAgo } from "@/lib/constants";
+import { CASE_FILTERS, CIVIC_LOCATIONS, STAGES, categoryOf, matchCaseFilter, timeAgo } from "@/lib/constants";
+import { LocationPicker } from "@/components/LocationPicker";
 import { getIssues } from "@/lib/queries";
 import { ArrowRight, Plus, Search } from "lucide-react";
 import Link from "next/link";
@@ -7,12 +8,14 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cases" };
 
-export default async function CasesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
-  const { status: s, q: rawQ } = await searchParams;
+export default async function CasesPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; location?: string }> }) {
+  const { status: s, q: rawQ, location: selectedLocation } = await searchParams;
   const status = CASE_FILTERS.some((x) => x.id === s) ? (s as string) : "all";
   const q = (rawQ ?? "").trim().toLowerCase();
+  const location = CIVIC_LOCATIONS.find((item) => item.id === selectedLocation) ?? CIVIC_LOCATIONS[0];
+  const locationId = location.id;
 
-  const all = (await getIssues()).filter((i) => i.kind === "problem");
+  const all = (await getIssues()).filter((i) => i.kind === "problem" && i.locationId === locationId);
   const matchesQ = (i: (typeof all)[number]) =>
     !q ||
     [i.title, i.description, i.department ?? "", i.locationText, categoryOf(i.category).label, String(12300 + i.id), `#${12300 + i.id}`]
@@ -24,10 +27,11 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
 
   const href = (id: string) => {
     const p = new URLSearchParams();
+    p.set("location", locationId);
     if (id !== "all") p.set("status", id);
     if (q) p.set("q", rawQ!.trim());
     const qs = p.toString();
-    return qs ? `/cases?${qs}` : "/cases";
+    return `/cases?${qs}`;
   };
 
   return (
@@ -35,7 +39,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
       <PageHead
         title="Cases"
         actions={
-          <Link href="/report" className="btn btn-primary">
+          <Link href={`/report?location=${locationId}`} className="btn btn-primary">
             <Plus size={16} aria-hidden /> Report a problem
           </Link>
         }
@@ -46,7 +50,9 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
       <div className="workspace-grid has-rail">
         <section className="primary-content" aria-label="Case list">
           <div className="stack">
+            <LocationPicker locationId={locationId} />
             <form action="/cases" role="search" className="row" style={{ gap: 10 }}>
+              <input type="hidden" name="location" value={locationId} />
               {status !== "all" && <input type="hidden" name="status" value={status} />}
               <div className="search" style={{ width: "100%", maxWidth: 480 }}>
                 <Search size={16} aria-hidden />
@@ -59,7 +65,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
                 Search
               </button>
               {q && (
-                <Link href={status === "all" ? "/cases" : `/cases?status=${status}`} className="btn btn-ghost">
+                <Link href={`/cases?location=${locationId}${status === "all" ? "" : `&status=${status}`}`} className="btn btn-ghost">
                   Clear
                 </Link>
               )}
@@ -93,11 +99,12 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
                     <span className="tag">{categoryOf(i.category).label}</span>
                   </div>
                   <h3>
-                    <Link href={`/cases/${i.id}`} className="stretched">
+                    <Link href={`/cases/${i.id}?location=${locationId}`} className="stretched">
                       {i.title}
                     </Link>
                   </h3>
                   <div className="case-facts">
+                    <span>Location: <b>{i.locationText} · {location.ward}, {location.city}</b></span>
                     <span>
                       <b>{i.affectedCount}</b> residents affected
                     </span>

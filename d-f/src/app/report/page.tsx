@@ -1,13 +1,14 @@
 import { ReportForm } from "@/components/ReportForm";
 import { PageHead } from "@/components/ui";
-import { STAGES } from "@/lib/constants";
+import { CIVIC_LOCATIONS, DEFAULT_LOCATION_ID, STAGES } from "@/lib/constants";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Report a problem" };
 
-export default async function ReportPage({ searchParams }: { searchParams: Promise<{ category?: string; description?: string }> }) {
+export default async function ReportPage({ searchParams }: { searchParams: Promise<{ category?: string; description?: string; location?: string }> }) {
   const sp = await searchParams;
+  const locationId = CIVIC_LOCATIONS.find((location) => location.id === sp.location)?.id ?? DEFAULT_LOCATION_ID;
   return (
     <>
       <PageHead title="Report a problem" eyebrow="New case">
@@ -16,7 +17,12 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
 
       <div className="workspace-grid has-rail">
         <div className="primary-content" style={{ maxWidth: 760 }}>
-          <ReportForm initialCategory={sp.category} initialDescription={sp.description?.slice(0, 500)} />
+          <ReportForm
+            key={locationId}
+            initialCategory={sp.category}
+            initialDescription={sp.description?.slice(0, 500)}
+            initialLocationId={locationId}
+          />
         </div>
 
         <aside className="contextual-panel" aria-label="Reporting guidance">
@@ -26,7 +32,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
               <li>Says exactly where, with a landmark or block.</li>
               <li>Describes size, duration, and who is at risk.</li>
               <li>Includes one clear photo in daylight if possible.</li>
-              <li>Checks <Link className="link" href="/cases?status=open">open cases</Link> first, so you can confirm instead of duplicating.</li>
+              <li>Checks <Link className="link" href={`/cases?location=${locationId}&status=open`}>open cases</Link> first, so you can confirm instead of duplicating.</li>
             </ul>
           </section>
           <section className="card widget">

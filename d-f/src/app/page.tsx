@@ -1,15 +1,19 @@
 import { Metric, IssueCard, PageHead, PriorityIssues, SourceLabel, WardSnapshot } from "@/components/ui";
-import { FEED_FILTERS, matchFeedFilter, isUnresolved, timeAgo } from "@/lib/constants";
+import { CIVIC_LOCATIONS, FEED_FILTERS, civicLocationLabel, matchFeedFilter, isUnresolved, timeAgo } from "@/lib/constants";
 import { getIssues, getRecentUpdates, getStats } from "@/lib/queries";
-import { AlertCircle, CheckCircle2, FileText, Landmark, Newspaper, Plus, Search, Users } from "lucide-react";
+import { LocationPicker } from "@/components/LocationPicker";
+import { IconAlertCircle, IconBuildingBank, IconCircleCheck, IconFileText, IconNews, IconPlus, IconSearch, IconUsers } from "@tabler/icons-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage({ searchParams }: { searchParams: Promise<{ filter?: string }> }) {
-  const { filter: f } = await searchParams;
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ filter?: string; location?: string }> }) {
+  const { filter: f, location: selectedLocation } = await searchParams;
   const filter = FEED_FILTERS.some((x) => x.id === f) ? (f as string) : "all";
-  const [issues, stats, updates] = await Promise.all([getIssues(), getStats(), getRecentUpdates(4)]);
+  const location = CIVIC_LOCATIONS.find((item) => item.id === selectedLocation) ?? CIVIC_LOCATIONS[0];
+  const locationId = location.id;
+  const [allIssues, stats, updates] = await Promise.all([getIssues(), getStats(locationId), getRecentUpdates(4, locationId)]);
+  const issues = allIssues.filter((issue) => issue.locationId === locationId);
 
   const feed = issues.filter((i) => matchFeedFilter(i, filter));
   const priority = issues.filter(isUnresolved).sort((a, b) => b.affectedCount - a.affectedCount).slice(0, 3);
@@ -21,23 +25,24 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         title="Your neighbourhood, better together."
         actions={
           <>
+            <LocationPicker locationId={locationId} />
             <Link href="/ask" className="btn btn-secondary">
-              <Search size={16} aria-hidden /> Find help
+              <IconSearch size={16} aria-hidden /> Find help
             </Link>
-            <Link href="/report" className="btn btn-primary">
-              <Plus size={16} aria-hidden /> Report a problem
+            <Link href={`/report?location=${locationId}`} className="btn btn-primary">
+              <IconPlus size={16} aria-hidden /> Report a problem
             </Link>
           </>
         }
       >
-        Report local problems, support existing cases, and follow progress in Ward 24.
+        Report local problems, support existing cases, and follow progress in {civicLocationLabel(location)}.
       </PageHead>
 
       <section className="metrics" aria-label="Ward statistics">
-        <Metric label="Unresolved issues" value={stats.unresolved} note={`${stats.awaiting} awaiting verification`} icon={AlertCircle} tone="amber" />
-        <Metric label="Resolved issues" value={stats.resolved} note="Verified by residents" icon={CheckCircle2} tone="green" />
-        <Metric label="Total civic posts" value={stats.total} note="Problems and notices" icon={FileText} />
-        <Metric label="Community confirmations" value={stats.confirmations} note="Residents affected, across cases" icon={Users} tone="blue" />
+        <Metric label="Unresolved issues" value={stats.unresolved} note={`${stats.awaiting} awaiting verification`} icon={IconAlertCircle} tone="amber" />
+        <Metric label="Resolved issues" value={stats.resolved} note="Verified by residents" icon={IconCircleCheck} tone="green" />
+        <Metric label="Total civic posts" value={stats.total} note="Problems and notices" icon={IconFileText} />
+        <Metric label="Community confirmations" value={stats.confirmations} note="Residents affected, across cases" icon={IconUsers} tone="blue" />
       </section>
 
       <div className="workspace-grid has-rail">
@@ -48,7 +53,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             </h2>
             <nav className="tabs" aria-label="Filter community issues">
               {FEED_FILTERS.map((x) => (
-                <Link key={x.id} href={x.id === "all" ? "/" : `/?filter=${x.id}`} className="tab" aria-current={filter === x.id ? "true" : undefined}>
+                <Link key={x.id} href={`/?location=${locationId}${x.id === "all" ? "" : `&filter=${x.id}`}`} className="tab" aria-current={filter === x.id ? "true" : undefined}>
                   {x.label}
                   <span className="count">{issues.filter((i) => matchFeedFilter(i, x.id)).length}</span>
                 </Link>
@@ -69,39 +74,45 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         </section>
 
         <aside className="contextual-panel" aria-label="Ward context">
-          <WardSnapshot unresolved={stats.unresolved} resolved={stats.resolved} />
+          <WardSnapshot unresolved={stats.unresolved} resolved={stats.resolved} location={location} />
           <PriorityIssues issues={priority} />
 
           <section className="card widget" aria-labelledby="w-gov">
             <h3 id="w-gov">
-              <Landmark size={16} aria-hidden /> Government contacts
+              <IconBuildingBank size={16} aria-hidden /> Government contacts
             </h3>
-            <div className="stack" style={{ gap: 12 }}>
-              <div>
-                <a className="link" href="https://jaipurmc.org" target="_blank" rel="noopener noreferrer">
-                  Jaipur Municipal Corporation
-                </a>
-                <div style={{ marginTop: 4 }}>
-                  <SourceLabel q="official" />
+            {location.city === "Jaipur" ? (
+              <div className="stack" style={{ gap: 12 }}>
+                <div>
+                  <a className="link" href="https://jaipurmc.org" target="_blank" rel="noopener noreferrer">
+                    Jaipur Municipal Corporation
+                  </a>
+                  <div style={{ marginTop: 4 }}>
+                    <SourceLabel q="official" />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <a className="link" href="https://sampark.rajasthan.gov.in" target="_blank" rel="noopener noreferrer">
-                  Rajasthan Sampark portal
-                </a>
-                <div style={{ marginTop: 4 }}>
-                  <SourceLabel q="official" />
+                <div>
+                  <a className="link" href="https://sampark.rajasthan.gov.in" target="_blank" rel="noopener noreferrer">
+                    Rajasthan Sampark portal
+                  </a>
+                  <div style={{ marginTop: 4 }}>
+                    <SourceLabel q="official" />
+                  </div>
                 </div>
+                <p className="small muted" style={{ margin: 0 }}>
+                  Phone numbers are not listed: this demo has no verified contact data. <Link href="/place" className="link">Ward information</Link>
+                </p>
               </div>
-              <p className="small muted" style={{ margin: 0 }}>
-                Phone numbers are not listed: this demo has no verified contact data. <Link href="/place" className="link">Ward information</Link>
+            ) : (
+              <p className="small muted" style={{ marginBottom: 0 }}>
+                Verified contacts for this demo location are not available yet.
               </p>
-            </div>
+            )}
           </section>
 
           <section className="card widget" aria-labelledby="w-upd">
             <h3 id="w-upd">
-              <Newspaper size={16} aria-hidden /> Community updates
+              <IconNews size={16} aria-hidden /> Community updates
             </h3>
             <ul className="list-links">
               {updates.map((u) => (

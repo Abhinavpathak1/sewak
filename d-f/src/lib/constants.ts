@@ -1,5 +1,15 @@
 export const CURRENT_RESIDENT = "Meera Sharma";
 export const WARD = { number: 24, name: "Ward 24", locality: "Shastri Nagar", city: "Jaipur" };
+export const CIVIC_LOCATIONS = [
+  { id: "jaipur-24", ward: "Ward 24", locality: "Shastri Nagar", city: "Jaipur" },
+  { id: "jaipur-25", ward: "Ward 25", locality: "Jaipur", city: "Jaipur" },
+  { id: "pune-7", ward: "Ward 7", locality: "Pune", city: "Pune" },
+] as const;
+export const DEFAULT_LOCATION_ID = CIVIC_LOCATIONS[0].id;
+export type CivicLocationId = (typeof CIVIC_LOCATIONS)[number]["id"];
+export const civicLocation = (id: string) => CIVIC_LOCATIONS.find((location) => location.id === id);
+export const civicLocationLabel = (location: (typeof CIVIC_LOCATIONS)[number]) =>
+  `${location.ward} · ${location.locality === location.city ? location.city : `${location.locality}, ${location.city}`}`;
 export const CASE_BASE = 12300;
 
 export const caseNumber = (id: number) => CASE_BASE + id;

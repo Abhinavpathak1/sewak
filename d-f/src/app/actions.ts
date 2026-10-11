@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { comments, confirmations, evidence, issues, timelineEvents, verifications } from "@/db/schema";
-import { CATEGORIES, CURRENT_RESIDENT, REOPEN_THRESHOLD, VERIFY_THRESHOLD, categoryOf, stageOf } from "@/lib/constants";
+import { CATEGORIES, CIVIC_LOCATIONS, CURRENT_RESIDENT, REOPEN_THRESHOLD, VERIFY_THRESHOLD, categoryOf, stageOf } from "@/lib/constants";
 import { ensureSeeded } from "@/lib/queries";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -27,6 +27,7 @@ export async function createIssue(input: {
   title: string;
   category: string;
   description: string;
+  locationId: string;
   location: string;
   simulated?: boolean;
   photo?: string | null;
@@ -36,11 +37,13 @@ export async function createIssue(input: {
   const title = input.title.trim();
   const description = input.description.trim();
   const location = input.location.trim();
+  const locationId = input.locationId;
   if (title.length < 8) fields.title = "Enter a short title of at least 8 characters.";
   if (title.length > 120) fields.title = "Keep the title under 120 characters.";
   if (!CATEGORIES.some((c) => c.id === input.category)) fields.category = "Choose a category.";
   if (description.length < 20) fields.description = "Describe the problem in at least 20 characters so neighbours and the authority understand it.";
   if (location.length < 3) fields.location = "Add a location or use the demo location.";
+  if (!CIVIC_LOCATIONS.some((item) => item.id === locationId)) fields.location = "Choose a ward or neighbourhood.";
   const photo = validImage(input.photo);
   if (photo === undefined) fields.photo = "Photo must be a JPEG, PNG or WebP image under 1 MB after resizing.";
   if (Object.keys(fields).length) return { ok: false, error: "Please fix the highlighted fields.", fields };
@@ -56,6 +59,7 @@ export async function createIssue(input: {
       category: cat.id,
       stage: 1,
       author: CURRENT_RESIDENT,
+      locationId,
       locationText: location,
       locationSimulated: input.simulated !== false,
       department: kind === "problem" ? cat.department : null,

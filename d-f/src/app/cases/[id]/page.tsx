@@ -1,7 +1,7 @@
 import { AuthorityForm, CommentForm, ConfirmAffected, EvidenceForm, VerifyPanel } from "@/components/CaseActions";
 import { Avatar, Lifecycle, SourceLabel, StatusBadge } from "@/components/ui";
 import {
-  EVIDENCE_PHASES, REOPEN_THRESHOLD, VERIFY_THRESHOLD, caseNumber, categoryOf, fmtDate, fmtDateTime, stageOf, timeAgo,
+  EVIDENCE_PHASES, REOPEN_THRESHOLD, VERIFY_THRESHOLD, caseNumber, categoryOf, civicLocation, fmtDate, fmtDateTime, stageOf, timeAgo,
 } from "@/lib/constants";
 import { getIssueDetail } from "@/lib/queries";
 import { Camera, ClipboardEdit, ExternalLink, Info, MapPin } from "lucide-react";
@@ -17,6 +17,7 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
   const d = await getIssueDetail(n);
   if (!d) notFound();
   const { issue } = d;
+  const issueLocation = civicLocation(issue.locationId);
   const cat = categoryOf(issue.category);
   const isCase = issue.kind === "problem";
   const fixed = d.verifications.filter((v) => v.verdict === "fixed");
@@ -51,7 +52,7 @@ export default async function CaseDetail({ params }: { params: Promise<{ id: str
             <div>
               <dt className="small muted">Location</dt>
               <dd style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>
-                <MapPin size={13} aria-hidden style={{ verticalAlign: "-1px" }} /> {issue.locationText}
+                <MapPin size={13} aria-hidden style={{ verticalAlign: "-1px" }} /> {issue.locationText} · {issueLocation?.ward ?? "Unknown ward"}, {issueLocation?.city ?? "Unknown city"}
                 {issue.locationSimulated && <span className="small muted" style={{ fontWeight: 400 }}> (simulated demo location)</span>}
               </dd>
             </div>

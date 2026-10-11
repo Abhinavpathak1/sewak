@@ -244,6 +244,7 @@ export async function getIssues() {
       category: issues.category,
       stage: issues.stage,
       author: issues.author,
+      locationId: issues.locationId,
       locationText: issues.locationText,
       department: issues.department,
       complaintRef: issues.complaintRef,
@@ -258,8 +259,8 @@ export async function getIssues() {
     .orderBy(desc(issues.createdAt));
 }
 
-export async function getStats() {
-  const all = await getIssues();
+export async function getStats(locationId?: string) {
+  const all = (await getIssues()).filter((issue) => !locationId || issue.locationId === locationId);
   return {
     unresolved: all.filter(isUnresolved).length,
     resolved: all.filter(isResolved).length,
@@ -312,7 +313,7 @@ export async function getContributions() {
   };
 }
 
-export async function getRecentUpdates(limit = 4) {
+export async function getRecentUpdates(limit = 4, locationId?: string) {
   await ensureSeeded();
   return db
     .select({
@@ -325,7 +326,9 @@ export async function getRecentUpdates(limit = 4) {
     })
     .from(timelineEvents)
     .innerJoin(issues, eq(issues.id, timelineEvents.issueId))
-    .where(sql`${timelineEvents.stage} > 1`)
+    .where(locationId
+      ? and(sql`${timelineEvents.stage} > 1`, eq(issues.locationId, locationId))
+      : sql`${timelineEvents.stage} > 1`)
     .orderBy(desc(timelineEvents.createdAt), desc(timelineEvents.id))
     .limit(limit);
 }

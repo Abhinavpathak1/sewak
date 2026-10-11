@@ -1,21 +1,30 @@
 "use client";
 
 import { createIssue } from "@/app/actions";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, CIVIC_LOCATIONS, civicLocationLabel, type CivicLocationId } from "@/lib/constants";
+import { saveDefaultLocation } from "@/lib/location-preference";
 import { MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { PhotoPicker } from "./PhotoPicker";
 
-const DEMO_LOCATION = "Near Shastri Nagar Circle, Ward 24";
-
-export function ReportForm({ initialCategory, initialDescription }: { initialCategory?: string; initialDescription?: string }) {
+export function ReportForm({
+  initialCategory,
+  initialDescription,
+  initialLocationId,
+}: {
+  initialCategory?: string;
+  initialDescription?: string;
+  initialLocationId: CivicLocationId;
+}) {
   const router = useRouter();
   const [kind, setKind] = useState<"problem" | "information">("problem");
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(CATEGORIES.some((c) => c.id === initialCategory) ? initialCategory! : "");
   const [description, setDescription] = useState(initialDescription ?? "");
+  const [locationId, setLocationId] = useState<CivicLocationId>(initialLocationId);
   const [location, setLocation] = useState("");
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [simulated, setSimulated] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,9 +51,13 @@ export function ReportForm({ initialCategory, initialDescription }: { initialCat
       if (first) document.getElementById(`f-${first}`)?.focus();
       return;
     }
+    if (saveAsDefault && !saveDefaultLocation(locationId)) {
+      setFormError("Could not save your default location in this browser. Your report can still be submitted by unchecking that option.");
+      return;
+    }
     start(async () => {
-      const r = await createIssue({ kind, title, category, description, location, simulated, photo });
-      if (r.ok) router.push(`/cases/${r.id}`);
+      const r = await createIssue({ kind, title, category, description, locationId, location, simulated, photo });
+      if (r.ok) router.push(`/cases/${r.id}?location=${locationId}`);
       else {
         setErrors(r.fields ?? {});
         setFormError(r.error);
@@ -95,17 +108,42 @@ export function ReportForm({ initialCategory, initialDescription }: { initialCat
       </div>
 
       <div className="field">
+        <label htmlFor="f-location-ward">Ward or neighbourhood</label>
+        <select
+          id="f-location-ward"
+          className="select"
+          value={locationId}
+          onChange={(event) => {
+            const selected = CIVIC_LOCATIONS.find((item) => item.id === event.target.value);
+            if (selected) setLocationId(selected.id);
+          }}
+        >
+          {CIVIC_LOCATIONS.map((item) => (
+            <option key={item.id} value={item.id}>{civicLocationLabel(item)}</option>
+          ))}
+        </select>
+        <label className="location-save-default">
+          <input type="checkbox" checked={saveAsDefault} onChange={(event) => setSaveAsDefault(event.target.checked)} />
+          Save this as my default location
+        </label>
+      </div>
+
+      <div className="field">
         <label htmlFor="f-location">Location</label>
         <div className="row" style={{ gap: 10, alignItems: "stretch" }}>
           <input id="f-location" className="input" value={location} onChange={(e) => { setLocation(e.target.value); setSimulated(false); }} placeholder="Street, landmark or block" {...f("location")} />
-          <button type="button" className="btn btn-secondary" onClick={() => { setLocation(DEMO_LOCATION); setSimulated(true); }}>
+          <button type="button" className="btn btn-secondary" onClick={() => {
+            const selected = CIVIC_LOCATIONS.find((item) => item.id === locationId) ?? CIVIC_LOCATIONS[0];
+            setLocation(`Near ${selected.locality}, ${selected.ward}`);
+            setSimulated(true);
+          }}>
             <MapPin size={16} aria-hidden /> Use demo location
           </button>
         </div>
         <span className="hint">
           {simulated
             ? "Simulated location: this demo does not read your real GPS position."
-            : "Typed by you. Demo location fills in a simulated spot in Ward 24."}
+            : `Typed by you. Demo location fills in a simulated spot in ${CIVIC_LOCATIONS.find((item) => item.id === locationId)?.ward}.`}
         </span>
         {errors.location && <div id="e-location" className="error">{errors.location}</div>}
       </div>
@@ -115,7 +153,7 @@ export function ReportForm({ initialCategory, initialDescription }: { initialCat
       {formError && <div className="callout" style={{ background: "var(--red-bg)", color: "var(--red-fg)" }} role="alert">{formError}</div>}
 
       <div className="row between wrap">
-        <span className="small muted">Posting as Demo resident · Ward 24</span>
+        <span className="small muted">Posting as Demo resident · {CIVIC_LOCATIONS.find((item) => item.id === locationId)?.ward}</span>
         <button className="btn btn-primary btn-lg" type="submit" disabled={pending}>
           {pending ? "Submitting…" : kind === "problem" ? "Submit report" : "Post notice"}
         </button>
